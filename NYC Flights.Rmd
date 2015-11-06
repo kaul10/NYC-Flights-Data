@@ -1,0 +1,419 @@
+---
+title: "NYC Flights Data"
+author: "Aditya Kaul"
+date: "November 4, 2015"
+output: html_document
+---
+
+```{r, set-options,warning=FALSE,fig.width=10,fig.height=6, message=FALSE}
+options(width = 100)
+
+# Stardard libraries
+#install.packages("nycflights13")
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(nycflights13)
+```
+
+
+```{r, warning=FALSE,fig.width=10,fig.height=6}
+#Load the flights data into a locally created data frame
+flights_NYC <- flights
+
+#Using the unite_() function to combine the first three columns of the dataframe
+#to give us the year-month-day combined
+flights_NYC <- unite_(flights_NYC,"flightdate",c("year","month","day"),sep = "-",remove = F)
+#Check the structure of this new data frame
+str(flights_NYC)
+#Convert the flightdate column to a date datatype
+flights_NYC$flightdate <- as.Date(flights_NYC$flightdate)
+
+#Create a data frame that aggregates the departure delay based on the date
+flights_NYC_small <- flights_NYC %>%
+  group_by(flightdate) %>%
+  summarise(sum_delay = sum(dep_delay,na.rm=T))
+
+#Create a time series plot showing date vs the departure delays
+ggplot(flights_NYC_small,aes(flightdate,sum_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=4)+
+  xlab("Departure Dates")+
+  ylab("Departure Delays(hrs)")+
+  ggtitle("Finding the highest departure delays in a day in 2013")+
+  theme_bw()
+
+#Create a data frame that aggregates the departure delay based on the date, more
+#specifically year, month and date
+flights_NYC_small_two <- flights_NYC %>%
+  group_by(year,month,day) %>%
+  summarise(sum_delay = sum(dep_delay,na.rm=T))
+
+#Create a subset from the above newly created data frame such that we consider 
+#only the dates for January 2013
+flights_NYC_small_two_march <- subset(flights_NYC_small_two,month==3)
+#Use the tail() function to check whether the last date is 31 Jan or not
+tail(flights_NYC_small_two_march)
+
+#Create a time series plot similar to the one above
+ggplot(flights_NYC_small_two_march,aes(day,sum_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=4)+
+  xlab("Departure Dates(March)")+
+  ylab("Departure Delays(hrs)")+
+  ggtitle("Finding the highest departure delays in a day in January 2013")+
+  theme_bw()
+
+#Creating a new column called monthnames to show which month we are considering 
+#in our analysis
+flights_NYC$monthnames <- rep(NA,nrow(flights_NYC))
+flights_NYC[flights_NYC$month==1,][,"monthnames"] <- "Jan"
+flights_NYC[flights_NYC$month==2,][,"monthnames"] <- "Feb"
+flights_NYC[flights_NYC$month==3,][,"monthnames"] <- "Mar"
+flights_NYC[flights_NYC$month==4,][,"monthnames"] <- "Apr"
+flights_NYC[flights_NYC$month==5,][,"monthnames"] <- "May"
+flights_NYC[flights_NYC$month==6,][,"monthnames"] <- "Jun"
+flights_NYC[flights_NYC$month==7,][,"monthnames"] <- "Jul"
+flights_NYC[flights_NYC$month==8,][,"monthnames"] <- "Aug"
+flights_NYC[flights_NYC$month==9,][,"monthnames"] <- "Sep"
+flights_NYC[flights_NYC$month==10,][,"monthnames"] <- "Oct"
+flights_NYC[flights_NYC$month==11,][,"monthnames"] <- "Nov"
+flights_NYC[flights_NYC$month==12,][,"monthnames"] <- "Dec"
+
+#Setting the monthnames as factors and also defining the levels of these monthnames
+flights_NYC$monthnames <- factor(flights_NYC$monthnames,levels = c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"))
+#Checking the structure of the newly modified data frame
+str(flights_NYC)
+
+
+#Creating a new column called monthnames to show which month we are considering 
+#in our analysis
+flights_NYC_small_two$monthnames <- rep(NA,nrow(flights_NYC_small_two))
+flights_NYC_small_two[flights_NYC_small_two$month==1,][,"monthnames"] <- "Jan"
+flights_NYC_small_two[flights_NYC_small_two$month==2,][,"monthnames"] <- "Feb"
+flights_NYC_small_two[flights_NYC_small_two$month==3,][,"monthnames"] <- "Mar"
+flights_NYC_small_two[flights_NYC_small_two$month==4,][,"monthnames"] <- "Apr"
+flights_NYC_small_two[flights_NYC_small_two$month==5,][,"monthnames"] <- "May"
+flights_NYC_small_two[flights_NYC_small_two$month==6,][,"monthnames"] <- "Jun"
+flights_NYC_small_two[flights_NYC_small_two$month==7,][,"monthnames"] <- "Jul"
+flights_NYC_small_two[flights_NYC_small_two$month==8,][,"monthnames"] <- "Aug"
+flights_NYC_small_two[flights_NYC_small_two$month==9,][,"monthnames"] <- "Sep"
+flights_NYC_small_two[flights_NYC_small_two$month==10,][,"monthnames"] <- "Oct"
+flights_NYC_small_two[flights_NYC_small_two$month==11,][,"monthnames"] <- "Nov"
+flights_NYC_small_two[flights_NYC_small_two$month==12,][,"monthnames"] <- "Dec"
+
+#Setting the monthnames as factors and also defining the levels of these monthnames
+flights_NYC_small_two$monthnames <- factor(flights_NYC_small_two$monthnames,levels = c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"))
+
+#Creating a plot to visualize the departure delays on a daily basis per month 
+#which helps us in looking for a pattern
+ggplot(flights_NYC_small_two,aes(day,sum_delay))+
+  geom_line(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Departure Dates")+
+  ylab("Departure Delays(hrs)")+
+  facet_wrap(~monthnames)+
+  ggtitle("Finding the highest departure delays in a day in 2013")+
+  theme_bw()
+
+#Here we have removed the NA values from the original dataset
+flights_NYC_new <- na.omit(flights_NYC)
+
+#Here we want to group by hours since we want to find delays over the entire 
+#duration of the day
+hour_mean_depdelay <- flights_NYC_new %>%
+  group_by(hour) %>%
+  summarise(mean = mean(dep_delay,na.rm=T))
+
+#We want to see what the max and min hour is in our calculation
+max(flights_NYC_new$hour,na.rm = T)
+min(flights_NYC_new$hour,na.rm = T)
+
+#Since we have 24th hour as well as 0th hour which both mean the same thing 
+#we want to convert one to the other
+#Here we convert all the 24 hour values to 0 hours
+flights_NYC_new$hour[flights_NYC_new$hour==24] <- flights_NYC_new$hour[flights_NYC_new$hour==0]
+
+#Here we want to group by hours since we want to find delays over the entire duration 
+#of the day 
+hour_mean_depdelay <- flights_NYC_new %>%
+  group_by(hour) %>%
+  summarise(mean = mean(dep_delay,na.rm=T))
+
+#Create a plot that shows the departure delay over the course of a day
+ggplot(hour_mean_depdelay,aes(hour,mean))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=5)+
+  geom_smooth(se=F,col="Black")+
+  xlab("hours")+
+  ylab("Mean Departure Delay")+
+  theme_bw()
+```
+
+
+_As we can see from the plots below, weather seems to have some sort of impact on the departure delays of the flights from NYC. Although it is not possible for us to confirm whether it is these variables that are causing the delays, through the various plots below we have shown that there is a certain correlation between variables in the weather data set and the departure delay._
+
+_For temperature, we can see that there is a slight increase in the values of the departure delay for low temperatures and a relatively high delay at higher temperatures whereas at mild temperatures the delay is low._
+
+_Another variable that catches our attention is the presence of dew. As the amount of dew increases we can see that there is an increase in the departure delay which signifies some sort of correlation between the two variables. Similarly, we can see that with an increase in humidity the departure delay seems to increase as well._
+
+_Precipitation on the other hand seems to have a zero slope which shows that as precipitation increases there is no effect on the departure delay of the flights._
+
+_For windspeed and windgust we have a strange relation. This is something that we can dig deeper into to find out the cause for such a relation. It seems as if at low wind speed and low wind gust the delay is higher.Note here that the speed and gust are in mph._
+
+_We also need to keep in mind that these are just correlations between the departure delay and the various weather variables. We are NOT saying that these variables solely are causing the delay. There could be several other confounding variables that have a bigger hand in the delay._
+
+_Our findings above could be the reason why delays are occuring or they could be the reason for some other variable which in turn is causing the delay._
+
+```{r, warning=FALSE,fig.width=10,fig.height=6, message=FALSE}
+#?weather
+#Check to see what our flights from NYC data frame contains
+head(flights_NYC)
+#Create a duplicate local copy of the data frame weather called weather_NYC
+weather_NYC <- weather
+#Check to see the what our weather_NYC data frame contains
+head(weather_NYC)
+#Check the structure of the data frame weather_NYC
+#str(weather_NYC)
+
+#Perform a left join on the flights_NYC and weather_NYC data frames
+flights_weather_NYC <- left_join(flights_NYC,weather_NYC)
+
+#Calculate the means of departure delays for each day for the entire year to give 
+#us 365 data points
+dep_delay_mean<-flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_delay = mean(dep_delay,na.rm=T))
+
+#Calculate the means of temperature for each day for the entire year to give us 
+#365 data points
+temp_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_temp = mean(temp,na.rm=T))
+
+#Add means of temperature and means of departure delay to a single data frame by 
+#performing left join
+mean_weather_delay <- left_join(dep_delay_mean,temp_mean)
+
+#Calculate the means of dew for each day for the entire year to give us 365 data 
+#points
+dew_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_dew = mean(dewp,na.rm=T))
+
+#Add means of dew to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,dew_mean)
+
+#Calculate the means of humidity for each day for the entire year to give us 365 
+#data points
+humid_mean<-flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_humid = mean(humid,na.rm=T))
+
+#Add means of humidity to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,humid_mean)
+
+#Calculate the means of wind direction(in degrees) for each day for the entire 
+#year to give us 365 data points
+winddir_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_winddir = mean(wind_dir,na.rm=T))
+
+#Add means of wind direction to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,winddir_mean)
+
+#Calculate the means of wind speed(in mph) for each day for the entire year to 
+#give us 365 data points
+windspeed_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_windspeed = mean(wind_speed,na.rm=T))
+
+#Add means of wind speed to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,windspeed_mean)
+
+#Calculate the means of wind gust(in mph) for each day for the entire year to 
+#give us 365 data points
+windgust_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_windgust = mean(wind_gust,na.rm=T))
+
+#Add means of wind gust to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,windgust_mean)
+
+#Calculate the means of precipitation for each day for the entire year to give 
+#us 365 data points
+precip_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_precip = mean(precip,na.rm=T))
+
+#Add means of precipitation to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,precip_mean)
+
+#Calculate the means of pressure for each day for the entire year to give us 
+#365 data points
+pressure_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_pressure = mean(pressure,na.rm=T))
+
+#Add means of pressure to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,pressure_mean)
+
+#Calculate the means of visibility for each day for the entire year to give 
+#us 365 data points
+visib_mean <- flights_weather_NYC %>%
+  group_by(month,day) %>%
+  summarise(mean_visib = mean(visib,na.rm=T))
+
+#Add means of visibility to our mean_weather_delay data frame
+mean_weather_delay <- left_join(mean_weather_delay,visib_mean)
+
+
+p1 <- ggplot(mean_weather_delay,aes(mean_temp,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Temperature")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p2 <- ggplot(mean_weather_delay,aes(mean_dew,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Dew")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p3 <- ggplot(mean_weather_delay,aes(mean_humid,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Humidity")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p4 <- ggplot(mean_weather_delay,aes(mean_winddir,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Wind Direction")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p5 <- ggplot(mean_weather_delay,aes(mean_windspeed,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Wind Speed")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p6 <- ggplot(mean_weather_delay,aes(mean_windgust,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Wind Gust")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p7 <- ggplot(mean_weather_delay,aes(mean_precip,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Precipitation")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p8 <- ggplot(mean_weather_delay,aes(mean_pressure,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Pressure")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+p9 <- ggplot(mean_weather_delay,aes(mean_visib,mean_delay))+
+  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+  xlab("Mean Visibility")+
+  ylab("Mean Dep Delay")+
+  geom_smooth(se=F,col="Black")+
+  theme_bw()
+
+
+#Using the multiple plot function from cookbook-r.com
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+#Create all the ggplots on a single page
+multiplot(p1,p2,p3,p4,p5,p6,p7,p8,p9,cols=3)
+```
+
+_We started our exploratory analysis by first calculating the age of the flights which could be found by subtracting the year when they took flight last, that is, 2013 and the year in which they were manufactured. However, from the plot that we created we could see that there is an inverse correlation between the age of the flight and the departure delay. This means that as the flights get older and older and get used more, the delay reduces. This analysis did not look convincing and hence we performed another analysis that would make more sense._
+
+_As the number of seats increases on a flight we assume that the size of the flight increases. Our second analysis was to see if there was a delay in departure for heavier and bigger sized flights(more seats) than the smaller flights(lesser seats). To make the analysis clearer we segregated the plots on basis of manufacturers._
+
+_As can be seen from the plot, there isn't a lot of variance in delay for flights with lesser number of seats, however, for larger flights we can see a significant rise in delays as the seats increase. To further help our analysis and give it more clarity we have created a color encoding on basis of the engine which can help us recognize the different engines in the plot, especially for the manufacturers which have a lot of flights._
+
+```{r, warning=FALSE,fig.width=20,fig.height=12}
+
+#Check to see the first six rows of the flights_NYC data frame
+head(flights_NYC)
+#Create a local data frame called planes_data which is a replica of the 
+#planes data frame
+planes_data<-planes
+#Check to see the first six rows of the planes_data data frame
+head(planes_data)
+
+#Perform a left join between the data frames flights_NYC and planes_data 
+#on their "tailnum"
+flights_planes_data <- left_join(flights_NYC,planes_data,by="tailnum")
+
+#Calculate the age of the planes by subtracting the year that it flew, 
+#that is, 2013(year.x)
+#and the year that it was manufactured in, that is, year.y
+flights_planes_data$age <- flights_planes_data$year.x-flights_planes_data$year.y
+
+#Create a plot to show the relation between the departure delay and the 
+#age of the flight
+#ggplot(flights_planes_data,aes(age,dep_delay))+
+#  geom_point(col=rgb(255,0,0,75,maxColorValue=255),pch=19,cex=1.5)+
+#  xlab("Flight Age")+
+#  ylab("Departure Delay")+
+#  geom_smooth(se=F,col="Black")+
+#  theme_bw()
+
+#Calculate the number of unique values that we have of engine
+length(unique(flights_planes_data$age))
+
+#Create a plot to show seats vs departure delay and the engine is used as 
+#a factor to differentiate via color
+ggplot(flights_planes_data,aes(dep_delay,seats,col=as.factor(engine)))+
+  geom_point(pch=19,cex=1.5)+
+  xlab("Departure Delay")+
+  ylab("Seats in a Flight")+
+  facet_wrap(~manufacturer)+
+  theme_bw()
+```
